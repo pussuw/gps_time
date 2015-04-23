@@ -27,6 +27,7 @@ CMSIS_PATH := $(SOURCEPREFIX)cmsis/
 # Compiler paths
 CFLAGS += -Wall -std=gnu99 -mthumb -ggdb -Os -ffunction-sections -fdata-sections
 CFLAGS += -Werror -lnosys -lgcc --specs=nano.specs -nostartfiles
+CFLAGS += -mcpu=cortex-m0 -DARM_MATH_CM0
 ASMFLAGS := $(CFLAGS) -x assembler-with-cpp
 
 # Include all subdir makefiles
