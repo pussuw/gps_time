@@ -30,8 +30,6 @@
 #ifndef NRF_H
 #define NRF_H
 
-#ifndef _WIN32
-
 /* Family selection for main includes. NRF51 must be selected. */
 #ifdef NRF51
 #include "nrf51.h"
@@ -44,8 +42,6 @@
 #endif /* NRF51 */
 
 #include "compiler_abstraction.h"
-
-#endif /* _WIN32 */
 
 #endif /* NRF_H */
 
