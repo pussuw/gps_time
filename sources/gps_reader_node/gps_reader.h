@@ -8,6 +8,6 @@
 #ifndef GPS_READER_H_
 #define GPS_READER_H_
 
-
+void Gps_moduleStart(void);
 
 #endif /* GPS_READER_H_ */
