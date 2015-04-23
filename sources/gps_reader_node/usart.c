@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 #include "nrf.h"
+#include "hal.h"
 #include "usart.h"
 
 #define RECEIVE_BUFFER          1024
@@ -31,17 +32,19 @@ typedef struct
 /* Serial RX ringbuffer */
 static ring_buffer_t            m_uart_rx_buf = {0, 0, };
 
-/** Initialize serial port: baud = 4800 */
+/** Initialize serial port: baud = 9600 */
 void Usart_init(void)
 {
     /* GPIO init */
-    NRF_UART0->PSELTXD = 29;
-    NRF_UART0->PSELRXD = 0;
+    NRF_UART0->PSELTXD = HAL_USART_TX_PIN;
+    NRF_UART0->PSELRXD = HAL_USART_RX_PIN;
     NRF_UART0->TASKS_STOPTX = 1;
     NRF_UART0->TASKS_STOPRX = 1;
     NRF_UART0->ENABLE = UART_ENABLE_ENABLE_Disabled;
-    /* Set baudrate at 4800 */
-    NRF_UART0->BAUDRATE = (uint32_t)UART_BAUDRATE_BAUDRATE_Baud4800;
+    nrf_gpio_cfg_output(HAL_USART_TX_PIN);
+    nrf_gpio_cfg_input(HAL_USART_RX_PIN, NRF_GPIO_PIN_NOPULL);
+    /* Set baudrate at 9600 */
+    NRF_UART0->BAUDRATE = (uint32_t)UART_BAUDRATE_BAUDRATE_Baud9600;
     NRF_UART0->EVENTS_RXDRDY = 0;
     NRF_UART0->EVENTS_TXDRDY = 0;
     /* Interrupt init */
