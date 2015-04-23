@@ -1,0 +1,4 @@
+
+GPS_NODE_PREFIX := $(SOURCEPREFIX)gps_reader_node/
+CFLAGS += -I$(GPS_NODE_PREFIX)
+SOURCES += $(GPS_NODE_PREFIX)gps_reader.c
