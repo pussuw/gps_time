@@ -5,19 +5,29 @@
  *      Author: Ville
  */
 
-volatile int test_global = 0xdeadbeef;
-volatile int test_global_nul;
-volatile int test_global_inc;
+#include "nrf.h"
+#include "app.h"
+#include "timer.h"
+#include "radio.h"
 
 int main(void)
 {
-    (void)test_global;
-    (void)test_global_nul;
-    (void)test_global_inc;
-    while(1)
+    /* Power on all RAM banks */
+    NRF_POWER->RAMON |= POWER_RAMON_ONRAM0_Msk |
+                        POWER_RAMON_ONRAM1_Msk;
+    NRF_POWER->RAMONB |= POWER_RAMON_ONRAM2_Msk |
+                         POWER_RAMON_ONRAM3_Msk;
+    /* Use 16MHz external XTAL */
+    NRF_CLOCK->XTALFREQ = CLOCK_XTALFREQ_XTALFREQ_16MHz;
+    /* Start clock and wait for it to stabilize */
+    NRF_CLOCK->TASKS_HFCLKSTART = 1;
+    while (!NRF_CLOCK->EVENTS_HFCLKSTARTED)
     {
-        test_global_inc++;
-        /* Stop main thread here */
     }
+    /* Initialize common hardware */
+    Timer_init();
+    Radio_init();
+    /* Start application task */
+    App_start();
     return 0;
 }

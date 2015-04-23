@@ -31,8 +31,8 @@ CFLAGS += -mcpu=cortex-m0 -DARM_MATH_CM0
 ASMFLAGS := $(CFLAGS) -x assembler-with-cpp
 
 # Include all subdir makefiles
-include $(SOURCEPREFIX)vendor/makefile
-include $(SOURCEPREFIX)gps_reader_node/makefile
+include $(SOURCEPREFIX)makefile
+
 CFLAGS += -I$(CMSIS_PATH)
 
 # must escape quotes for echo to work
