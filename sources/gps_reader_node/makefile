@@ -1,5 +1,4 @@
 
 GPS_NODE_PREFIX := $(SOURCEPREFIX)gps_reader_node/
 CFLAGS += -I$(GPS_NODE_PREFIX) -DGPS_TIME_MODULE
-SOURCES += $(GPS_NODE_PREFIX)gps_reader.c \
-           $(GPS_NODE_PREFIX)usart.c
+SOURCES += $(GPS_NODE_PREFIX)gps_reader.c
