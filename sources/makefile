@@ -1,6 +1,7 @@
 # System headers / init
 include $(SOURCEPREFIX)vendor/makefile
 include $(SOURCEPREFIX)common/makefile
+include $(SOURCEPREFIX)hal/makefile
 
 # Targets
 ifeq ($(target),gps_reader)
