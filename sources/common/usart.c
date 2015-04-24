@@ -74,6 +74,15 @@ void Usart_disableReceiver(void)
     NRF_UART0->TASKS_STOPRX = 1;
 }
 
+void Usart_clearReceiver(void)
+{
+    Interrupt_disableAll();
+    ring_buffer_t *p = &m_uart_rx_buf;
+    p->in = 0;
+    p->out = 0;
+    Interrupt_enableAll();
+}
+
 uint8_t Usart_read(bool * empty)
 {
     uint8_t ret = 0;
