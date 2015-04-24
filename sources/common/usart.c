@@ -42,8 +42,10 @@ void Usart_init(void)
     NRF_UART0->TASKS_STOPTX = 1;
     NRF_UART0->TASKS_STOPRX = 1;
     NRF_UART0->ENABLE = UART_ENABLE_ENABLE_Disabled;
+    /* Transmitter is always off so configure pin as output and pull high */
     nrf_gpio_cfg_output(HAL_USART_TX_PIN);
-    nrf_gpio_cfg_input(HAL_USART_RX_PIN, NRF_GPIO_PIN_NOPULL);
+    nrf_gpio_pin_set(HAL_USART_TX_PIN);
+    nrf_gpio_cfg_input(HAL_USART_RX_PIN, NRF_GPIO_PIN_PULLUP);
     /* Set baudrate at 9600 */
     NRF_UART0->BAUDRATE = (uint32_t)UART_BAUDRATE_BAUDRATE_Baud9600;
     NRF_UART0->EVENTS_RXDRDY = 0;
