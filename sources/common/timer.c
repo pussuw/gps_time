@@ -104,22 +104,19 @@ void Timer_waitTimeout(void)
     Timer_clearTimeout();
 }
 
-bool Timer_registerIntervalCounter(uint32_t interval,
-                                   timer_callback_f cb,
-                                   int32_t bias)
+bool Timer_registerIntervalCounter(uint32_t interval, timer_callback_f cb)
 {
     bool ret = false;
     uint32_t max_bias;
     Interrupt_disableAll();
     max_bias = MAXIMUM_BIAS_TIME(interval);
-    if((abs(bias) <= max_bias) &&
-       (interval >= MINIMUM_INTERVAL_TIME) &&
+    if((interval >= MINIMUM_INTERVAL_TIME) &&
        (cb != NULL))
     {
         m_interval_time = interval;
         m_max_bias_time = max_bias;
         m_interval_cb = cb;
-        interval = Timer_getCount() + interval + bias;
+        interval = Timer_getCount() + interval;
         NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
         NRF_TIMER0->CC[TIMER_INTERVAL_CC] = interval;
         NRF_TIMER0->INTENSET = INTERVAL_TIMER_ENABLE;

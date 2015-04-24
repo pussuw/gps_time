@@ -24,7 +24,7 @@ static void                 second_timer(void);
 void System_timeInit(void)
 {
     memset((void *)&m_current_time, 0, sizeof(m_current_time));
-    Timer_registerIntervalCounter(SYSTEM_TIME_TICK, second_timer, 0);
+    Timer_registerIntervalCounter(SYSTEM_TIME_TICK, second_timer);
 }
 
 /* GPS format is HHMMSS */
