@@ -9,5 +9,6 @@
 #define HAL_H_
 
 #include "hal_usart.h"
+#include "hal_interrupt.h"
 
 #endif /* HAL_H_ */

@@ -60,7 +60,7 @@ void Usart_init(void)
     (UART_INTENSET_RXTO_Set << UART_INTENSET_RXTO_Pos);
     /* NVIC */
     NVIC_ClearPendingIRQ(UART0_IRQn);
-    NVIC_SetPriority(UART0_IRQn, 0);
+    NVIC_SetPriority(UART0_IRQn, HAL_USART_INTERRUPT_PRIO);
     NVIC_EnableIRQ(UART0_IRQn);
 }
 
