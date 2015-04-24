@@ -85,6 +85,22 @@ void Usart_clearReceiver(void)
     Interrupt_enableAll();
 }
 
+void Usart_send(const void * buffer, uint32_t length)
+{
+    uint8_t * p = (uint8_t *)buffer;
+    assert(buffer != NULL);
+    NRF_UART0->TASKS_STARTTX = 1;
+    while(length--)
+    {
+        NRF_UART0->TXD = *p++;
+        while(!NRF_UART0->EVENTS_TXDRDY)
+        {
+        }
+        NRF_UART0->EVENTS_TXDRDY = 0;
+    }
+    NRF_UART0->TASKS_STOPTX = 1;
+}
+
 uint8_t Usart_read(bool * empty)
 {
     uint8_t ret = 0;

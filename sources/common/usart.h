@@ -15,6 +15,7 @@ void Usart_init(void);
 void Usart_enableReceiver(void);
 void Usart_disableReceiver(void);
 void Usart_clearReceiver(void);
+void Usart_send(const void * buffer, uint32_t length);
 uint8_t Usart_read(bool * empty);
 
 #endif /* USART_H_ */
