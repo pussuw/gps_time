@@ -15,25 +15,8 @@
 #include "interrupt.h"
 #include "myassert.h"
 
-#define RECEIVE_BUFFER          1024
-
-#if RECEIVE_BUFFER < 2
-#error RECEIVE_BUFFER is too small.  It must be larger than 1.
-#elif ((RECEIVE_BUFFER & (RECEIVE_BUFFER-1)) != 0)
-#error RECEIVE_BUFFER must be a power of 2.
-#endif
-
-typedef struct
-{
-    uint16_t    in;                    // Next In Index
-    uint16_t    out;                   // Next Out Index
-    uint8_t     buf[RECEIVE_BUFFER];   // Buffer
-} ring_buffer_t;
-
-#define RINGBUFFER_ELEMENTS(p)  ((uint16_t)((p).in - (p).out))
-
-/* Serial RX ringbuffer */
-static ring_buffer_t            m_uart_rx_buf = {0, 0, };
+/* Serial RX callback */
+static volatile usart_rx_cb_f   m_rx_callback;
 
 /** Initialize serial port: baud = 9600 */
 void Usart_init(void)
@@ -66,25 +49,6 @@ void Usart_init(void)
     NVIC_EnableIRQ(UART0_IRQn);
 }
 
-void Usart_enableReceiver(void)
-{
-    NRF_UART0->TASKS_STARTRX = 1;
-}
-
-void Usart_disableReceiver(void)
-{
-    NRF_UART0->TASKS_STOPRX = 1;
-}
-
-void Usart_clearReceiver(void)
-{
-    Interrupt_disableAll();
-    ring_buffer_t *p = &m_uart_rx_buf;
-    p->in = 0;
-    p->out = 0;
-    Interrupt_enableAll();
-}
-
 void Usart_send(const void * buffer, uint32_t length)
 {
     uint8_t * p = (uint8_t *)buffer;
@@ -101,25 +65,13 @@ void Usart_send(const void * buffer, uint32_t length)
     NRF_UART0->TASKS_STOPTX = 1;
 }
 
-uint8_t Usart_read(bool * empty)
+void Usart_setupReceiver(usart_rx_cb_f cb)
 {
-    uint8_t ret = 0;
-    ring_buffer_t *p = &m_uart_rx_buf;
-    assert(empty != NULL);
-    *empty = false;
+    assert(cb != NULL);
     Interrupt_disableAll();
-    if (RINGBUFFER_ELEMENTS(*p) == 0)
-    {
-        /* Buffer empty */
-        *empty = true;
-    }
-    else
-    {
-        /* Return item from tail */
-        ret = (p->buf[(p->out++) & (RECEIVE_BUFFER - 1)]);
-    }
+    m_rx_callback = cb;
+    NRF_UART0->TASKS_STARTRX = 1;
     Interrupt_enableAll();
-    return ret;
 }
 
 void __attribute__((__interrupt__)) UART0_IRQHandler(void)
@@ -127,16 +79,13 @@ void __attribute__((__interrupt__)) UART0_IRQHandler(void)
     // Character received ?
     if (NRF_UART0->EVENTS_RXDRDY != 0)
     {
-        ring_buffer_t * p = &m_uart_rx_buf;
         uint8_t ch;
         // Clear event first
         NRF_UART0->EVENTS_RXDRDY  = 0;
         ch = NRF_UART0->RXD;
-        if (((p->in - p->out) & ~(RECEIVE_BUFFER - 1)) == 0)
+        if(m_rx_callback)
         {
-            /* Insert new item to head */
-            p->buf[p->in & (RECEIVE_BUFFER - 1)] = (uint8_t) (ch & 0xFF);
-            p->in++;
+            m_rx_callback(ch);
         }
     }
     // Handle errors.
