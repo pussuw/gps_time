@@ -25,7 +25,7 @@ bool Timer_registerIntervalCounter(uint32_t interval, timer_callback_f cb);
 /** Get bias from timer (time to next tick in microseconds) */
 int32_t Timer_timeToIntervalTick(void);
 /** Use bias to move first interval back / forth (calibrate system time) */
-void Timer_resetIntervalCounter(int32_t bias);
+void Timer_resetIntervalCounter(uint32_t bias);
 void Timer_delayMicros(uint32_t us);
 void Timer_delayMillis(uint32_t ms);
 

@@ -16,10 +16,13 @@
 #include "myassert.h"
 
 /** Time keeping */
-#define SYSTEM_TIME_TICK    1000000u
-static system_time_t        m_current_time;
-static bool                 m_time_acquired;
-static void                 second_timer(void);
+#define SYSTEM_TIME_TICK        1000000u
+static volatile system_time_t   m_current_time;
+static volatile bool            m_time_acquired;
+static void                     second_timer(void);
+static void                     increment_time(system_time_t * time);
+static uint32_t                 calibrate_time(system_time_t * time,
+                                               int32_t system_bias);
 
 void System_timeInit(void)
 {
@@ -28,7 +31,9 @@ void System_timeInit(void)
 }
 
 /* GPS format is HHMMSS */
-void System_timeSetGps(const uint8_t * gps_time, int32_t bias)
+void System_timeSetGps(const uint8_t * gps_time,
+                       const int8_t * local_time,
+                       uint32_t timestamp)
 {
     uint8_t * in = (uint8_t *)gps_time;
     uint32_t * out = (uint32_t *)&m_current_time;
@@ -45,24 +50,27 @@ void System_timeSetGps(const uint8_t * gps_time, int32_t bias)
         dec10 += dec01;
         *out++ = dec10;
     }
-    Timer_resetIntervalCounter(bias);
+    timestamp = Timer_getCount() - timestamp;
+    timestamp = calibrate_time((system_time_t *)&m_current_time, timestamp);
+    Timer_resetIntervalCounter(timestamp);
     m_time_acquired = true;
     Interrupt_enableAll();
 }
 
-void System_timeSet(const system_time_t * time, int32_t bias)
+void System_timeSet(const system_time_t * time, uint32_t bias)
 {
     assert(time != NULL);
     Interrupt_disableAll();
     m_current_time.seconds = time->seconds;
     m_current_time.minutes = time->minutes;
     m_current_time.hours = time->hours;
+    bias = calibrate_time((system_time_t *)&m_current_time, bias);
     Timer_resetIntervalCounter(bias);
     m_time_acquired = true;
     Interrupt_enableAll();
 }
 
-bool System_timeGet(system_time_t * time, int32_t * bias)
+bool System_timeGet(system_time_t * time, uint32_t * bias)
 {
     assert(time != NULL);
     assert(bias != NULL);
@@ -70,26 +78,55 @@ bool System_timeGet(system_time_t * time, int32_t * bias)
     time->seconds = m_current_time.seconds;
     time->minutes = m_current_time.minutes;
     time->hours = m_current_time.hours;
-    *bias = Timer_timeToIntervalTick();
+    *bias = calibrate_time(time, Timer_timeToIntervalTick());
     Interrupt_enableAll();
     return m_time_acquired;
 }
 
 static void second_timer(void)
 {
-    m_current_time.seconds++;
-    if(m_current_time.seconds == 60)
+    increment_time((system_time_t *)&m_current_time);
+}
+
+static void increment_time(system_time_t * time)
+{
+    time->seconds++;
+    if(time->seconds == 60)
     {
-        m_current_time.seconds = 0;
-        m_current_time.minutes++;
+        time->seconds = 0;
+        time->minutes++;
     }
-    if(m_current_time.minutes == 60)
+    if(time->minutes == 60)
     {
-        m_current_time.minutes = 0;
-        m_current_time.hours++;
+        time->minutes = 0;
+        time->hours++;
     }
-    if(m_current_time.hours == 24)
+    if(time->hours == 24)
     {
-        m_current_time.hours = 0;
+        time->hours = 0;
     }
+}
+
+static uint32_t calibrate_time(system_time_t * time, int32_t system_bias)
+{
+    if(system_bias < 0)
+    {
+        /* If system is in a long critical, bias can be negative */
+        while(system_bias < 0)
+        {
+            /* Worst case: bias is over 1 second (clock is late) */
+            increment_time(time);
+            system_bias += SYSTEM_TIME_TICK;
+        }
+    }
+    else
+    {
+        /* Normally bias is just added to the clock (propagation delay) */
+        while(system_bias > SYSTEM_TIME_TICK)
+        {
+            increment_time(time);
+            system_bias -= SYSTEM_TIME_TICK;
+        }
+    }
+    return system_bias;
 }

@@ -20,8 +20,11 @@ typedef struct
 }system_time_t;
 
 void System_timeInit(void);
-void System_timeSetGps(const uint8_t * gps_time, int32_t bias);
-void System_timeSet(const system_time_t * time, int32_t bias);
-bool System_timeGet(system_time_t * time, int32_t * bias);
+/** Option for setting local time offset to UTC */
+void System_timeSetGps(const uint8_t * gps_time,
+                       const int8_t * local_time,
+                       uint32_t timestamp);
+void System_timeSet(const system_time_t * time, uint32_t bias);
+bool System_timeGet(system_time_t * time, uint32_t * bias);
 
 #endif /* SYSTEM_TIME_H_ */

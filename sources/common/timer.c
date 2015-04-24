@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include "nrf.h"
 #include "timer.h"
 #include "hal.h"
@@ -36,11 +35,10 @@
 
 /* Interval service */
 #define MINIMUM_INTERVAL_TIME       1000
-#define MAXIMUM_BIAS_TIME(time)     ((time) / 2)
+#define MINIMUM_BIAS_MARGIN         10
 #define INTERVAL_TIMER_ENABLE       TIMER_INTENSET_COMPARE2_Msk
 #define INTERVAL_TIMER_DISABLE      TIMER_INTENCLR_COMPARE2_Msk
 static volatile uint32_t            m_interval_time;
-static volatile uint32_t            m_max_bias_time;
 static volatile timer_callback_f    m_interval_cb;
 
 void Timer_init(void)
@@ -107,14 +105,10 @@ void Timer_waitTimeout(void)
 bool Timer_registerIntervalCounter(uint32_t interval, timer_callback_f cb)
 {
     bool ret = false;
-    uint32_t max_bias;
     Interrupt_disableAll();
-    max_bias = MAXIMUM_BIAS_TIME(interval);
-    if((interval >= MINIMUM_INTERVAL_TIME) &&
-       (cb != NULL))
+    if((interval >= MINIMUM_INTERVAL_TIME) && (cb != NULL))
     {
         m_interval_time = interval;
-        m_max_bias_time = max_bias;
         m_interval_cb = cb;
         interval = Timer_getCount() + interval;
         NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
@@ -131,19 +125,28 @@ int32_t Timer_timeToIntervalTick(void)
     uint32_t time;
     Interrupt_disableAll();
     time = Timer_getCount();
+    /* This can underflow if inside a long critical section */
     time = NRF_TIMER0->CC[TIMER_INTERVAL_CC] - time;
     Interrupt_enableAll();
     return (int32_t)time;
 }
 
-void Timer_resetIntervalCounter(int32_t bias)
+void Timer_resetIntervalCounter(uint32_t bias)
 {
     uint32_t time;
     assert(m_interval_cb != NULL);
-    assert(abs(bias) <= m_max_bias_time);
+    assert(bias <= m_interval_time);
     Interrupt_disableAll();
     time = Timer_getCount();
-    time += m_interval_time + bias;
+    /* Calculate how much time is left after removing bias*/
+    bias = m_interval_time - bias;
+    if(bias < MINIMUM_BIAS_MARGIN)
+    {
+        /* Must have some margin between current time and next ISR */
+        bias = MINIMUM_BIAS_MARGIN;
+    }
+    /* Move time forward */
+    time += bias;
     NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
     NRF_TIMER0->CC[TIMER_INTERVAL_CC] = time;
     Interrupt_enableAll();
