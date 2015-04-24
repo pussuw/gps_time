@@ -11,6 +11,7 @@
 #include "nrf.h"
 #include "hal.h"
 #include "usart.h"
+#include "interrupt.h"
 
 #define RECEIVE_BUFFER          1024
 
@@ -76,7 +77,7 @@ uint8_t Usart_read(bool * empty)
     uint8_t ret = 0;
     ring_buffer_t *p = &m_uart_rx_buf;
     *empty = false;
-    __disable_irq();
+    Interrupt_disableAll();
     if (RINGBUFFER_ELEMENTS(*p) == 0)
     {
         /* Buffer empty */
@@ -87,7 +88,7 @@ uint8_t Usart_read(bool * empty)
         /* Return item from tail */
         ret = (p->buf[(p->out++) & (RECEIVE_BUFFER - 1)]);
     }
-    __enable_irq();
+    Interrupt_enableAll();
     return ret;
 }
 
