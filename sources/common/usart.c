@@ -7,11 +7,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "nrf.h"
 #include "hal.h"
 #include "usart.h"
 #include "interrupt.h"
+#include "myassert.h"
 
 #define RECEIVE_BUFFER          1024
 
@@ -87,6 +89,7 @@ uint8_t Usart_read(bool * empty)
 {
     uint8_t ret = 0;
     ring_buffer_t *p = &m_uart_rx_buf;
+    assert(empty != NULL);
     *empty = false;
     Interrupt_disableAll();
     if (RINGBUFFER_ELEMENTS(*p) == 0)

@@ -8,10 +8,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stddef.h>
 
 #include "nrf.h"
 #include "radio.h"
 #include "timer.h"
+#include "myassert.h"
 
 /* Maximum size of radio payload (radio restricts this to 255) */
 #define RADIO_MAX_PAYLOAD   16u
@@ -88,6 +90,7 @@ void Radio_init(void)
 bool Radio_send(const void * data, uint32_t len)
 {
     bool ret = false;
+    assert(data != NULL);
     wait_tx_end();
     if((len > RADIO_MAX_PAYLOAD) || (len == 0))
     {
@@ -124,6 +127,8 @@ bool Radio_receive(void * data, uint32_t * len, uint32_t timeout)
 {
     bool ret = false;
     uint32_t now = Timer_getCount();
+    assert(data != NULL);
+    assert(len != NULL);
     wait_tx_end();
     if(NRF_RADIO->STATE != RADIO_STATE_STATE_Disabled)
     {
