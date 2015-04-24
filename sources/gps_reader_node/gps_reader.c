@@ -30,23 +30,38 @@
 static void                 init_gpio(void);
 
 /**
- * GPS module
- * $GPZDA,hhmmss.ss,dd,mm,yyyy,xx,yy*CC
- * $GPZDA,201530.00,04,07,2002,00,00*60
- * where:
- * hhmmss    HrMinSec(UTC)
- * dd,mm,yyy Day,Month,Year
- * xx        local zone hours -13..13
- * yy        local zone minutes 0..59
- * *CC       checksum
- */
+  GPS module
+  Possible mnemonics to keep track of
+  $GPZDA,hhmmss.ss,dd,mm,yyyy,xx,yy*CC
+  $GPZDA,201530.00,04,07,2002,00,00*60
+  where:
+  hhmmss    HrMinSec(UTC)
+  dd,mm,yyy Day,Month,Year
+  xx        local zone hours -13..13
+  yy        local zone minutes 0..59
+  *CC       checksum
+  $GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A
+  Where:
+  RMC          Recommended Minimum sentence C
+  123519       Fix taken at 12:35:19 UTC
+  A            Status A=active or V=Void.
+  4807.038,N   Latitude 48 deg 07.038' N
+  01131.000,E  Longitude 11 deg 31.000' E
+  022.4        Speed over the ground in knots
+  084.4        Track angle in degrees True
+  230394       Date - 23rd of March 1994
+  003.1,W      Magnetic Variation
+  *6A          The checksum data, always begins with *
+**/
 #define GPS_MODULE_PWR_CYC  250u
 #define GPS_MINIMUM_MSG_LEN 20u
-#define GPS_TIME_MNEMONIC   "GPZDA"
+#define GPS_TIME_MNEMONIC   "GPRMC"
 #define GPS_TIME_START      '$'
 #define GPS_TIME_SEPARATOR  ','
 #define GPS_CHECKSUM_ID     '*'
 #define GPS_TIME_TERMINATOR '\n'
+/** \todo This could be obtained from almanac and keeping system almanac */
+#define GPS_TIME_DIFF       "03"
 static volatile uint32_t    m_msg_timestamp;
 static void                 init_gps_module(void);
 static bool                 verify_checksum(uint8_t * data);
@@ -107,9 +122,9 @@ static void init_gps_module(void)
     /* Release from reset */
     nrf_gpio_pin_set(GPIO_PIN_RST);
     /* Power cycle chip */
-    nrf_gpio_pin_set(GPIO_PIN_ON_OFF);
-    Timer_delayMillis(GPS_MODULE_PWR_CYC);
     nrf_gpio_pin_clear(GPIO_PIN_ON_OFF);
+    Timer_delayMillis(GPS_MODULE_PWR_CYC);
+    nrf_gpio_pin_set(GPIO_PIN_ON_OFF);
 }
 
 static bool verify_checksum(uint8_t * data)
@@ -147,9 +162,15 @@ static void frame_completed(void)
                 *mnemonic = '\0';
                 if(strcmp((char *)msg, GPS_TIME_MNEMONIC) == 0)
                 {
-                    /* Correct mnemonic: set system time*/
+                    /* Correct mnemonic: see if message contains time field */
                     mnemonic++;
-                    System_timeSetGps(mnemonic, NULL, m_msg_timestamp);
+                    if(*mnemonic != GPS_TIME_SEPARATOR)
+                    {
+                        /* Time is valid, set time */
+                        System_timeSetGps(mnemonic,
+                                          (const uint8_t *)GPS_TIME_DIFF,
+                                          m_msg_timestamp);
+                    }
                 }
             }
         }

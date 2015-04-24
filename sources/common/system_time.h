@@ -22,7 +22,7 @@ typedef struct
 void System_timeInit(void);
 /** Option for setting local time offset to UTC */
 void System_timeSetGps(const uint8_t * gps_time,
-                       const int8_t * local_time,
+                       const uint8_t * local_time,
                        uint32_t timestamp);
 void System_timeSet(const system_time_t * time, uint32_t bias);
 bool System_timeGet(system_time_t * time, uint32_t * bias);
