@@ -9,6 +9,7 @@
 #include "app.h"
 #include "timer.h"
 #include "radio.h"
+#include "system_time.h"
 
 int main(void)
 {
@@ -27,6 +28,7 @@ int main(void)
     /* Initialize common hardware */
     Timer_init();
     Radio_init();
+    System_timeInit();
     /* Start application task */
     App_start();
     return 0;
