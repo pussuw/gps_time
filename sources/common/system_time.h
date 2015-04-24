@@ -21,7 +21,7 @@ typedef struct
 
 void System_timeInit(void);
 void System_timeSetGps(const uint8_t * gps_time, int32_t bias);
-void System_timeSet(system_time_t * time, int32_t bias);
+void System_timeSet(const system_time_t * time, int32_t bias);
 bool System_timeGet(system_time_t * time, int32_t * bias);
 
 #endif /* SYSTEM_TIME_H_ */

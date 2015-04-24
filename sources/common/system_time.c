@@ -50,7 +50,7 @@ void System_timeSetGps(const uint8_t * gps_time, int32_t bias)
     Interrupt_enableAll();
 }
 
-void System_timeSet(system_time_t * time, int32_t bias)
+void System_timeSet(const system_time_t * time, int32_t bias)
 {
     assert(time != NULL);
     Interrupt_disableAll();
