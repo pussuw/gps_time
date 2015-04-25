@@ -9,8 +9,8 @@
 
 seven_seg_matrix_t   m_fonts[] =
 {
-    /* 0: Display nothing */
-    {  },
+    /* 0: ABCDEF */
+    { .a = 1, .b = 1, .c = 1, .d = 1, .e = 1, .f = 1 },
     /* 1: BC */
     { .b = 1, .c = 1 },
     /* 2: ABDEG */
