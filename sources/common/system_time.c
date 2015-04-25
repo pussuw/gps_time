@@ -54,15 +54,17 @@ void System_timeSet(const system_time_t * time,
 
 bool System_timeGet(system_time_t * time, uint32_t * bias)
 {
+    bool time_acquired = false;
     assert(time != NULL);
     assert(bias != NULL);
     Interrupt_disableAll();
     time->seconds = m_current_time.seconds;
     time->minutes = m_current_time.minutes;
     time->hours = m_current_time.hours;
-    *bias = calibrate_time(time, Timer_timeToIntervalTick());
+    *bias = calibrate_time(time, Timer_timeSinceInterval());
+    time_acquired = m_time_acquired;
     Interrupt_enableAll();
-    return m_time_acquired;
+    return time_acquired;
 }
 
 static void second_timer(void)

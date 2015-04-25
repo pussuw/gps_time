@@ -120,13 +120,18 @@ bool Timer_registerIntervalCounter(uint32_t interval, timer_callback_f cb)
     return ret;
 }
 
-int32_t Timer_timeToIntervalTick(void)
+int32_t Timer_timeSinceInterval(void)
 {
-    uint32_t time;
+    uint32_t time, set_time;
+    assert(m_interval_cb != NULL);
     Interrupt_disableAll();
     time = Timer_getCount();
-    /* This can underflow if inside a long critical section */
-    time = NRF_TIMER0->CC[TIMER_INTERVAL_CC] - time;
+    /* Get current set time */
+    set_time = NRF_TIMER0->CC[TIMER_INTERVAL_CC];
+    /* Last tick is now - interval */
+    set_time -= m_interval_time;
+    /* Calculate diff: this can be negative */
+    time = time - set_time;
     Interrupt_enableAll();
     return (int32_t)time;
 }
