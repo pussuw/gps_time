@@ -77,8 +77,8 @@ void Timer_setTimeout(uint32_t time)
 {
     /* Lets make sure timeout is not  too close */
     time += MINIMUM_TIMEOUT_TIME;
-    NRF_TIMER0->EVENTS_COMPARE[TIMER_TIMEOUT_CC] = 0;
     NRF_TIMER0->CC[TIMER_TIMEOUT_CC] = time;
+    NRF_TIMER0->EVENTS_COMPARE[TIMER_TIMEOUT_CC] = 0;
 }
 
 bool Timer_getTimeout(void)
@@ -111,8 +111,8 @@ bool Timer_registerIntervalCounter(uint32_t interval, timer_callback_f cb)
         m_interval_time = interval;
         m_interval_cb = cb;
         interval = Timer_getCount() + interval;
-        NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
         NRF_TIMER0->CC[TIMER_INTERVAL_CC] = interval;
+        NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
         NRF_TIMER0->INTENSET = INTERVAL_TIMER_ENABLE;
         ret = true;
     }
@@ -147,8 +147,8 @@ void Timer_resetIntervalCounter(uint32_t bias)
     }
     /* Move time forward */
     time += bias;
-    NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
     NRF_TIMER0->CC[TIMER_INTERVAL_CC] = time;
+    NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
     Interrupt_enableAll();
 }
 
