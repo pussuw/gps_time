@@ -104,7 +104,7 @@ static uint32_t calibrate_time(system_time_t * time, int32_t system_bias)
     else if(system_bias > 0)
     {
         /* Normally bias is just added to the clock (propagation delay) */
-        while(system_bias > SYSTEM_TIME_TICK)
+        while(system_bias >= SYSTEM_TIME_TICK)
         {
             increment_time(time);
             system_bias -= SYSTEM_TIME_TICK;
