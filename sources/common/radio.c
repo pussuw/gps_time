@@ -135,6 +135,7 @@ bool Radio_receive(void * data, uint32_t * len, uint32_t timeout)
         goto rx_failed;
     }
     /* Set DMA buffer */
+    NRF_RADIO->EVENTS_END = 0;
     NRF_RADIO->PACKETPTR = (uint32_t)&m_radio_packet;
     /* Enable automatic state transition after packet is received */
     NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
@@ -160,6 +161,7 @@ bool Radio_receive(void * data, uint32_t * len, uint32_t timeout)
     }
     memcpy(data, (void *)m_radio_packet.pld, m_radio_packet.len);
     *len = m_radio_packet.len;
+    ret = true;
 rx_failed:
     disable_radio();
     Timer_clearTimeout();
