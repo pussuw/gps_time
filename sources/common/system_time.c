@@ -42,7 +42,10 @@ void System_timeSet(const system_time_t * time,
     m_current_time.minutes = time->minutes;
     m_current_time.hours = time->hours;
     utc_to_local_time(local_time);
-    timestamp = Timer_getCount() - timestamp - bias;
+    /* How much time has gone since timestamp acquired ? */
+    timestamp = Timer_getCount() - timestamp;
+    /* How much bias with given time ? */
+    timestamp += bias;
     timestamp = calibrate_time((system_time_t *)&m_current_time, timestamp);
     Timer_resetIntervalCounter(timestamp);
     m_time_acquired = true;
