@@ -24,7 +24,6 @@ static void                     increment_time(system_time_t * time);
 static uint32_t                 calibrate_time(system_time_t * time,
                                                int32_t system_bias);
 static void                     utc_to_local_time(int32_t hours);
-static uint8_t                  convert_gps_time(uint8_t * in, uint8_t ** out);
 
 void System_timeInit(void)
 {
@@ -32,49 +31,20 @@ void System_timeInit(void)
     Timer_registerIntervalCounter(SYSTEM_TIME_TICK, second_timer);
 }
 
-/* GPS format is HHMMSS */
-void System_timeSetGps(const uint8_t * gps_time,
-                       const uint8_t * local_time,
-                       uint32_t timestamp)
+void System_timeSet(const system_time_t * time,
+                    int32_t  local_time,
+                    uint32_t timestamp,
+                    uint32_t bias)
 {
-    uint8_t * in = (uint8_t *)gps_time;
-    uint32_t * out = (uint32_t *)&m_current_time;
-    uint8_t index;
     assert(gps_time != NULL);
-    Interrupt_disableAll();
-    for(index = 0; index < 3; index++)
-    {
-        *out++ = convert_gps_time(in, &in);
-    }
-    if(local_time != NULL)
-    {
-        int8_t sign = 1;
-        in = (uint8_t *)local_time;
-        if(*in == '-')
-        {
-            sign = -1;
-            in++;
-        }
-        index = convert_gps_time(in, NULL);
-        index *= sign;
-        utc_to_local_time(index);
-    }
-    timestamp = Timer_getCount() - timestamp;
-    timestamp = calibrate_time((system_time_t *)&m_current_time, timestamp);
-    Timer_resetIntervalCounter(timestamp);
-    m_time_acquired = true;
-    Interrupt_enableAll();
-}
-
-void System_timeSet(const system_time_t * time, uint32_t bias)
-{
-    assert(time != NULL);
     Interrupt_disableAll();
     m_current_time.seconds = time->seconds;
     m_current_time.minutes = time->minutes;
     m_current_time.hours = time->hours;
-    bias = calibrate_time((system_time_t *)&m_current_time, bias);
-    Timer_resetIntervalCounter(bias);
+    utc_to_local_time(local_time);
+    timestamp = Timer_getCount() - timestamp - bias;
+    timestamp = calibrate_time((system_time_t *)&m_current_time, timestamp);
+    Timer_resetIntervalCounter(timestamp);
     m_time_acquired = true;
     Interrupt_enableAll();
 }
@@ -128,7 +98,7 @@ static uint32_t calibrate_time(system_time_t * time, int32_t system_bias)
             system_bias += SYSTEM_TIME_TICK;
         }
     }
-    else
+    else if(system_bias > 0)
     {
         /* Normally bias is just added to the clock (propagation delay) */
         while(system_bias > SYSTEM_TIME_TICK)
@@ -150,7 +120,7 @@ static void utc_to_local_time(int32_t hours)
             m_current_time.hours += 24;
         }
     }
-    else
+    else if(hours > 0)
     {
         m_current_time.hours += hours;
         if(m_current_time.hours >= 24)
@@ -158,20 +128,4 @@ static void utc_to_local_time(int32_t hours)
             m_current_time.hours -= 24;
         }
     }
-}
-
-static uint8_t convert_gps_time(uint8_t * in, uint8_t ** out)
-{
-    uint8_t dec01, dec10;
-    dec10 = *in++;
-    dec01 = *in++;
-    dec01 -= '0';
-    dec10 -= '0';
-    dec10 *= 10;
-    dec10 += dec01;
-    if(out != NULL)
-    {
-        *out = in;
-    }
-    return dec10;
 }

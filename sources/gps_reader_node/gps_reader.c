@@ -53,11 +53,24 @@ static void                 init_gpio(void);
   003.1,W      Magnetic Variation
   *6A          The checksum data, always begins with *
 **/
-#define GPS_MODULE_PWR_CYC  250u
+
+/** Structure that contains GPS time format */
+typedef struct
+{
+    system_time_t   time;
+    int32_t         local_time;
+    uint32_t        gps_bias;
+}gps_time_t;
+
+/** GPS module characteristics */
+#define GPS_MODULE_PWR_CYC  250u // Milliseconds
+
+/** GPS communication protocol */
 #define GPS_MINIMUM_MSG_LEN 20u
 #define GPS_TIME_MNEMONIC   "GPRMC"
 #define GPS_TIME_START      '$'
 #define GPS_TIME_SEPARATOR  ','
+#define GPS_TIME_BIAS_SEP   '.'
 #define GPS_CHECKSUM_ID     '*'
 #define GPS_TIME_TERMINATOR '\n'
 /** \todo This could be obtained from almanac and keeping system almanac */
@@ -66,6 +79,10 @@ static volatile uint32_t    m_msg_timestamp;
 static void                 init_gps_module(void);
 static bool                 verify_checksum(uint8_t * data);
 static void                 frame_completed(void);
+static bool                 parse_gps_frame(uint8_t * msg,
+                                            gps_time_t * gps_time);
+static void                 parse_gps_time(uint8_t * time_msg,
+                                           gps_time_t * time);
 
 /** UART RX (intermediate buffer for NMEA parsing) */
 #define UART_BUFFER_SIZE    128
@@ -150,30 +167,91 @@ static void frame_completed(void)
 {
     if(m_uart_buffer_idx >= GPS_MINIMUM_MSG_LEN)
     {
-        uint8_t * mnemonic;
         uint8_t * msg = (uint8_t *)m_uart_buffer;
         /* First calculate checksum */
         if(verify_checksum(msg))
         {
             /* Checksum OK, start parsing */
-            mnemonic = (uint8_t *)strchr((char *)msg, GPS_TIME_SEPARATOR);
-            if(mnemonic != NULL)
+            gps_time_t gps_time;
+            if(parse_gps_frame(msg, &gps_time))
             {
-                *mnemonic = '\0';
-                if(strcmp((char *)msg, GPS_TIME_MNEMONIC) == 0)
-                {
-                    /* Correct mnemonic: see if message contains time field */
-                    mnemonic++;
-                    if(*mnemonic != GPS_TIME_SEPARATOR)
-                    {
-                        /* Time is valid, set time */
-                        System_timeSetGps(mnemonic,
-                                          (const uint8_t *)GPS_TIME_DIFF,
-                                          m_msg_timestamp);
-                    }
-                }
+                /* Time from GPS frame is valid, set system time */
+                System_timeSet(&gps_time.time,
+                               gps_time.local_time,
+                               m_msg_timestamp,
+                               gps_time.gps_bias);
             }
         }
+    }
+}
+
+static bool parse_gps_frame(uint8_t * msg, gps_time_t * gps_time)
+{
+    uint8_t * mnemonic;
+    bool ret = false;
+    mnemonic = (uint8_t *)strchr((char *)msg, GPS_TIME_SEPARATOR);
+    if(mnemonic != NULL)
+    {
+        *mnemonic = '\0';
+        if(strcmp((char *)msg, GPS_TIME_MNEMONIC) == 0)
+        {
+            /* Correct mnemonic: see if message contains time field */
+            mnemonic++;
+            if(*mnemonic != GPS_TIME_SEPARATOR)
+            {
+                /* Time field found */
+                parse_gps_time(mnemonic, gps_time);
+                ret = true;
+            }
+        }
+    }
+    return ret;
+}
+
+static void parse_gps_time(uint8_t * time_msg, gps_time_t * time)
+{
+    uint8_t a;
+    uint8_t * p;
+    uint8_t time_in[4];
+    uint32_t time_out;
+    uint32_t * out = (uint32_t *)&time->time;
+    /* Get system time */
+    for(a = 0; a < 3; a++)
+    {
+        time_in[0] = *time_msg++;
+        time_in[1] = *time_msg++;
+        time_in[2] = '\0';
+        time_out = atoi((char *)time_in);
+        *out++ = time_out;
+    }
+    /* Get time bias */
+    time->gps_bias = 0;
+    if(*time_msg == GPS_TIME_BIAS_SEP)
+    {
+        time_msg++;
+        p = (uint8_t *)strchr((char *)time_msg, GPS_TIME_SEPARATOR);
+        if(p != NULL)
+        {
+            *p = '\0';
+            /* GPS bias is milliseconds */
+            time_out = atoi((char *)time_msg);
+            time_out *= 1000;
+            time->gps_bias = time_out;
+        }
+    }
+    /* Get local time offset (not present in this message, this is a hack) */
+    time->local_time = 0;
+    if(GPS_TIME_DIFF)
+    {
+        int8_t sign = 1;
+        p = (uint8_t *)GPS_TIME_DIFF;
+        if(*p == '-')
+        {
+            sign = -1;
+            p++;
+        }
+        time_out = atoi((char *)p);
+        time->local_time = (int32_t)(time_out * sign);
     }
 }
 
