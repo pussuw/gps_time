@@ -12,6 +12,7 @@
 
 // Do not change priorities if you don't know what you are doing
 #define HAL_TIMER_INTERRUPT_PRIO    0
+#define HAL_RADIO_INTERRUPT_PRIO    0
 #define HAL_USART_INTERRUPT_PRIO    1
 
 #endif /* HAL_INTERRUPT_H_ */

@@ -11,9 +11,11 @@
 #include <stddef.h>
 
 #include "nrf.h"
+#include "hal.h"
 #include "radio.h"
 #include "timer.h"
 #include "myassert.h"
+#include "interrupt.h"
 
 /* Maximum size of radio payload (radio restricts this to 255) */
 #define RADIO_MAX_PAYLOAD       16u
@@ -55,6 +57,8 @@ typedef enum
                                     8000000) / RADIO_SYMBOLRATE)
 static uint32_t                 m_tx_end_time;
 static volatile radio_state_e   m_radio_state;
+static volatile radio_rx_cb_f   m_rx_callback;
+static volatile uint32_t        m_rx_max_size;
 static void                     wait_tx_end(void);
 static void                     disable_radio(void);
 
@@ -92,6 +96,9 @@ void Radio_init(void)
     NRF_RADIO->TIFS = 0;
     NRF_RADIO->DACNF = 0;
     NRF_RADIO->BCC = 0;
+    NVIC_DisableIRQ(RADIO_IRQn);
+    NVIC_ClearPendingIRQ(RADIO_IRQn);
+    NVIC_SetPriority(RADIO_IRQn, HAL_RADIO_INTERRUPT_PRIO);
     m_radio_state = RADIO_STATE_IDLE;
 }
 
@@ -179,6 +186,45 @@ rx_failed:
     return ret;
 }
 
+bool Radio_receiveAsynch(radio_rx_cb_f cb, uint32_t max_size)
+{
+    bool ret = false;
+    wait_tx_end();
+    assert(m_radio_state == RADIO_STATE_IDLE);
+    Interrupt_disableAll();
+    if((cb != NULL) && (m_rx_callback == NULL))
+    {
+        m_rx_callback = cb;
+        m_rx_max_size = max_size;
+        NRF_RADIO->INTENSET = RADIO_INTENSET_END_Msk;
+        NRF_RADIO->EVENTS_END = 0;
+        NRF_RADIO->PACKETPTR = (uint32_t)&m_radio_packet;
+        /* Enable automatic state transition after packet is received */
+        NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk |
+                            RADIO_SHORTS_END_DISABLE_Msk;
+        NRF_RADIO->FREQUENCY = m_frequency;
+        NVIC_ClearPendingIRQ(RADIO_IRQn);
+        NVIC_EnableIRQ(RADIO_IRQn);
+        NRF_RADIO->TASKS_RXEN = 1;
+        ret = true;
+    }
+    Interrupt_enableAll();
+    return ret;
+}
+
+void Radio_stopReceiver(void)
+{
+    assert(m_rx_callback != NULL);
+    Interrupt_disableAll();
+    m_rx_callback = NULL;
+    disable_radio();
+    NVIC_DisableIRQ(RADIO_IRQn);
+    NVIC_ClearPendingIRQ(RADIO_IRQn);
+    NRF_RADIO->INTENCLR = 0xFFFFFFFF;
+    m_radio_state = RADIO_STATE_IDLE;
+    Interrupt_enableAll();
+}
+
 void Radio_setFrequency(uint32_t frequency)
 {
     if(frequency == 0)
@@ -228,5 +274,26 @@ static void disable_radio(void)
     NRF_RADIO->TASKS_DISABLE = 1;
     while (NRF_RADIO->STATE != RADIO_STATE_STATE_Disabled)
     {
+    }
+}
+
+void __attribute__((__interrupt__)) RADIO_IRQHandler(void)
+{
+    if (NRF_RADIO->EVENTS_END)
+    {
+        uint32_t timestamp = Timer_getCount();
+        /* Timestamp is when packet was sent: now - ramp_up - ttoa */
+        timestamp -= RADIO_RAMP_UP_TIME - RADIO_TTOA;
+        NRF_RADIO->EVENTS_END = 0;
+        if (NRF_RADIO->CRCSTATUS == RADIO_CRCSTATUS_CRCSTATUS_CRCOk)
+        {
+            if((m_rx_callback != NULL) && (m_radio_packet.len <= m_rx_max_size))
+            {
+                m_rx_callback((void *)m_radio_packet.pld,
+                              m_radio_packet.len,
+                              timestamp);
+            }
+        }
+        NRF_RADIO->TASKS_START = 1;
     }
 }
