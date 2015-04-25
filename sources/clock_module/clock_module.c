@@ -48,6 +48,7 @@ static display_matrix_t     m_disp_matrix =
 static system_time_t        m_display_time;
 static uint32_t             m_time_bias;
 static void                 init_gpio(void);
+static void                 segment_pin_config(uint32_t pin_number);
 static void                 display_time(const system_time_t * time);
 
 /** Radio (GPS time synch) */
@@ -70,33 +71,28 @@ void Clock_moduleStart(void)
         if(System_timeGet(&m_display_time, &m_time_bias))
         {
             display_time(&m_display_time);
-            Timer_delayMillis(10);
         }
         // else display no clock
     }
 }
 
-static void set_segment(uint32_t pin)
+static void segment_pin_config(uint32_t pin_number)
 {
-    volatile uint32_t * reg = &NRF_GPIO->PIN_CNF[pin];
-    *reg = (*reg & ~GPIO_PIN_CNF_PULL_Msk) |
-           (NRF_GPIO_PIN_NOPULL << GPIO_PIN_CNF_PULL_Pos); // NRF_GPIO_PIN_PULLDOWN
-}
-
-static void clear_segment(uint32_t pin)
-{
-    volatile uint32_t * reg = &NRF_GPIO->PIN_CNF[pin];
-    *reg = (*reg & ~GPIO_PIN_CNF_PULL_Msk) |
-           (NRF_GPIO_PIN_PULLUP << GPIO_PIN_CNF_PULL_Pos);
+    NRF_GPIO->PIN_CNF[pin_number] =
+        (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos) |
+        (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)     |
+        (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)   |
+        (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)  |
+        (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
 }
 
 static void init_gpio(void)
 {
     uint32_t a;
-    /* Initialize as input and pull high (clear all displays) */
     for(a = 0; a < NUMBER_OF_SEGMENTS; a++)
     {
-        nrf_gpio_cfg_input(m_7seg_matrix.raw[a], NRF_GPIO_PIN_PULLUP);
+        segment_pin_config(m_7seg_matrix.raw[a]);
+        nrf_gpio_pin_set(m_7seg_matrix.raw[a]);
     }
     /* Initialize as outputs and pull high (clear all displays) */
     for(a = 0; a < NUMBER_OF_DISPLAYS; a++)
@@ -150,11 +146,11 @@ static void display_time(const system_time_t * time)
         {
             if(font->raw[b])
             {
-                set_segment(m_7seg_matrix.raw[a]);
+                nrf_gpio_pin_clear(m_7seg_matrix.raw[b]);
             }
             else
             {
-                clear_segment(m_7seg_matrix.raw[a]);
+                nrf_gpio_pin_set(m_7seg_matrix.raw[b]);
             }
         }
         select_display(a);
