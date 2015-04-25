@@ -16,14 +16,14 @@
 #include "myassert.h"
 
 /* Maximum size of radio payload (radio restricts this to 255) */
-#define RADIO_MAX_PAYLOAD   16u
-#define RADIO_PREAMBLE_LEN  1u
-#define RADIO_CRC_LEN       2u
-#define RADIO_SYMBOLRATE    1000000u
+#define RADIO_MAX_PAYLOAD       16u
+#define RADIO_PREAMBLE_LEN      1u
+#define RADIO_CRC_LEN           2u
+#define RADIO_SYMBOLRATE        1000000u
 
 /* Synchron word */
-static uint8_t              m_radio_addr[3] = {0xDE, 0xAD, 0xBE};
-#define RADIO_ADDR_SIZE     sizeof(m_radio_addr) / sizeof(m_radio_addr[0])
+static uint8_t                  m_radio_addr[3] = {0xDE, 0xAD, 0xBE};
+#define RADIO_ADDR_SIZE         sizeof(m_radio_addr) / sizeof(m_radio_addr[0])
 
 /* Radio DMA buffer contains length field + data */
 typedef struct
@@ -33,23 +33,30 @@ typedef struct
 }radio_packet_t;
 
 /* Data structure that contains the radio packet */
-static radio_packet_t       m_radio_packet;
+static radio_packet_t           m_radio_packet;
 
 /* Internal frequency and power*/
-static volatile uint32_t    m_frequency;
-static volatile uint32_t    m_power;
+static volatile uint32_t        m_frequency;
+static volatile uint32_t        m_power;
 
 /* Radio state handling */
-#define RADIO_RAMP_UP_TIME  150u
-#define RADIO_TTOA          ((((RADIO_PREAMBLE_LEN +         \
-                                RADIO_ADDR_SIZE +            \
-                                RADIO_CRC_LEN +              \
-                                RADIO_MAX_PAYLOAD)) *        \
-                                8000000) / RADIO_SYMBOLRATE)
-static uint32_t             m_tx_end_time;
-static volatile bool        m_tx_active;
-static void                 wait_tx_end(void);
-static void                 disable_radio(void);
+typedef enum
+{
+    RADIO_STATE_IDLE,
+    RADIO_STATE_TX,
+    RADIO_STATE_RX
+}radio_state_e;
+
+#define RADIO_RAMP_UP_TIME      150u
+#define RADIO_TTOA              ((((RADIO_PREAMBLE_LEN +         \
+                                    RADIO_ADDR_SIZE +            \
+                                    RADIO_CRC_LEN +              \
+                                    RADIO_MAX_PAYLOAD)) *        \
+                                    8000000) / RADIO_SYMBOLRATE)
+static uint32_t                 m_tx_end_time;
+static volatile radio_state_e   m_radio_state;
+static void                     wait_tx_end(void);
+static void                     disable_radio(void);
 
 void Radio_init(void)
 {
@@ -85,6 +92,7 @@ void Radio_init(void)
     NRF_RADIO->TIFS = 0;
     NRF_RADIO->DACNF = 0;
     NRF_RADIO->BCC = 0;
+    m_radio_state = RADIO_STATE_IDLE;
 }
 
 bool Radio_send(const void * data, uint32_t len)
@@ -92,6 +100,7 @@ bool Radio_send(const void * data, uint32_t len)
     bool ret = false;
     assert(data != NULL);
     wait_tx_end();
+    assert(m_radio_state == RADIO_STATE_IDLE);
     if((len > RADIO_MAX_PAYLOAD) || (len == 0))
     {
         goto tx_failed;
@@ -117,7 +126,7 @@ bool Radio_send(const void * data, uint32_t len)
     m_tx_end_time = Timer_getCount();
     m_tx_end_time += (RADIO_TTOA + RADIO_RAMP_UP_TIME);
     Timer_setTimeout(m_tx_end_time);
-    m_tx_active = true;
+    m_radio_state = RADIO_STATE_TX;
     ret = true;
 tx_failed:
     return ret;
@@ -130,6 +139,7 @@ bool Radio_receive(void * data, uint32_t * len, uint32_t timeout)
     assert(data != NULL);
     assert(len != NULL);
     wait_tx_end();
+    assert(m_radio_state == RADIO_STATE_IDLE);
     if(NRF_RADIO->STATE != RADIO_STATE_STATE_Disabled)
     {
         goto rx_failed;
@@ -163,6 +173,7 @@ bool Radio_receive(void * data, uint32_t * len, uint32_t timeout)
     *len = m_radio_packet.len;
     ret = true;
 rx_failed:
+    m_radio_state = RADIO_STATE_IDLE;
     disable_radio();
     Timer_clearTimeout();
     return ret;
@@ -205,10 +216,10 @@ void Radio_setPower(radio_power_levels_e power)
 
 static void wait_tx_end(void)
 {
-    if(m_tx_active)
+    if(m_radio_state == RADIO_STATE_TX)
     {
         Timer_waitTimeout();
-        m_tx_active = false;
+        m_radio_state = RADIO_STATE_IDLE;
     }
 }
 
