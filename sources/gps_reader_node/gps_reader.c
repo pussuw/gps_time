@@ -91,7 +91,7 @@ static volatile uint8_t     m_uart_buffer_idx;
 static void                 uart_rx_callback(uint8_t ch);
 
 /** Time sharing via radio */
-#define TIME_SHARE_INTERVAL 1000000u // 1 second
+#define TIME_SHARE_INTERVAL 1000000u // 1 second /** \todo Longer interval */
 static uint32_t             m_last_tx_time;
 static radio_pdu_t          m_radio_pdu;
 
@@ -218,7 +218,7 @@ static void parse_gps_time(uint8_t * time_msg, gps_time_t * time)
     uint8_t time_in[4];
     uint32_t time_out;
     uint32_t * out = (uint32_t *)&time->time;
-    /* Get system time */
+    /* Get system time \todo Ignore time if ,V, and not ,A, (GPS lock) */
     for(a = 0; a < 3; a++)
     {
         time_in[0] = *time_msg++;
@@ -256,6 +256,7 @@ static void parse_gps_time(uint8_t * time_msg, gps_time_t * time)
         time_out = atoi((char *)p);
         time->local_time = (int32_t)(time_out * sign);
     }
+    /* \todo The message contains date, could be used for DST */
 }
 
 static void uart_rx_callback(uint8_t ch)
@@ -267,7 +268,7 @@ static void uart_rx_callback(uint8_t ch)
     }
     else if(ch == GPS_TIME_TERMINATOR)
     {
-        /* Frame is done now: terminate string */
+        /* Frame is done now: terminate string \todo UART TTOA(nbytes) */
         m_msg_timestamp = Timer_getCount();
         m_uart_buffer[m_uart_buffer_idx] = '\0';
         frame_completed();

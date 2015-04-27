@@ -146,6 +146,7 @@ static void display_time(const system_time_t * time)
         font = &m_fonts[c];
         /* Clear all displays */
         select_display(NUMBER_OF_DISPLAYS);
+        /* Set segments \todo Could use PORT set for this ? */
         for(b = 0; b < NUMBER_OF_SEGMENTS; b++)
         {
             if(font->raw[b])

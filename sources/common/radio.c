@@ -281,6 +281,7 @@ void __attribute__((__interrupt__)) RADIO_IRQHandler(void)
 {
     if (NRF_RADIO->EVENTS_END)
     {
+        /** \todo Use timer CC[4] for this (polling creates a bit of bias) */
         uint32_t timestamp = Timer_getCount();
         /* Timestamp is when packet was sent: now - ramp_up - ttoa */
         timestamp -= RADIO_RAMP_UP_TIME - RADIO_TTOA;
