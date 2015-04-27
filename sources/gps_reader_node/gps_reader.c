@@ -98,6 +98,8 @@ static radio_pdu_t          m_radio_pdu;
 /* Entry point for GPS time seed module */
 void Gps_moduleStart(void)
 {
+    /* Allow voltages to stabilize for a bit */
+    Timer_delayMillis(2000);
     /* Initialize USART */
     Usart_init();
     Usart_setupReceiver(uart_rx_callback);
@@ -127,6 +129,7 @@ static void init_gpio(void)
 {
     nrf_gpio_cfg_output(GPIO_PIN_ON_OFF);
     nrf_gpio_pin_clear(GPIO_PIN_ON_OFF);
+    Timer_delayMillis(GPS_MODULE_PWR_CYC);
     /* Reset, set output and assert */
     nrf_gpio_cfg_output(GPIO_PIN_RST);
     nrf_gpio_pin_clear(GPIO_PIN_RST);

@@ -294,6 +294,6 @@ void __attribute__((__interrupt__)) RADIO_IRQHandler(void)
                               timestamp);
             }
         }
-        NRF_RADIO->TASKS_START = 1;
+        NRF_RADIO->TASKS_RXEN = 1;
     }
 }

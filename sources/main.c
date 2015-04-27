@@ -22,7 +22,7 @@ int main(void)
     NRF_CLOCK->XTALFREQ = CLOCK_XTALFREQ_XTALFREQ_16MHz;
     /* Start clock and wait for it to stabilize */
     NRF_CLOCK->TASKS_HFCLKSTART = 1;
-    while (!NRF_CLOCK->EVENTS_HFCLKSTARTED)
+    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0)
     {
     }
     /* Initialize common hardware */
