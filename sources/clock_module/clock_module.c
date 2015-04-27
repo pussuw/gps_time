@@ -72,7 +72,11 @@ void Clock_moduleStart(void)
         {
             display_time(&m_display_time);
         }
-        // else display no clock
+        else
+        {
+            /** \todo else display no clock */
+            display_time(&m_display_time);
+        }
     }
 }
 
