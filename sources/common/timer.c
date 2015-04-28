@@ -30,8 +30,11 @@
 #define TIMER_TIMEOUT_CC            1
 #define TIMER_INTERVAL_CC           2
 
+/* Some margin for CC set */
+#define CC_SET_SAFETY_TIME          10000
+
 /* Some margin for timeouts, so that waiting does not take forever (4300s) */
-#define MINIMUM_TIMEOUT_TIME        5
+#define MINIMUM_TIMEOUT_TIME        20
 
 /* Interval service */
 #define MINIMUM_INTERVAL_TIME       1000
@@ -75,10 +78,14 @@ uint32_t Timer_getCount(void)
 
 void Timer_setTimeout(uint32_t time)
 {
-    /* Lets make sure timeout is not  too close */
+    /* Lets make sure timeout is not too close */
     time += MINIMUM_TIMEOUT_TIME;
-    NRF_TIMER0->CC[TIMER_TIMEOUT_CC] = time;
+    /* Move current CC time forward for safety reasons */
+    NRF_TIMER0->TASKS_CAPTURE[TIMER_TIMEOUT_CC] = 1;
+    NRF_TIMER0->CC[TIMER_TIMEOUT_CC] += CC_SET_SAFETY_TIME;
     NRF_TIMER0->EVENTS_COMPARE[TIMER_TIMEOUT_CC] = 0;
+    /* Safe to set new time now */
+    NRF_TIMER0->CC[TIMER_TIMEOUT_CC] = time;
 }
 
 bool Timer_getTimeout(void)
@@ -152,8 +159,10 @@ void Timer_resetIntervalCounter(uint32_t bias)
     }
     /* Move time forward */
     time += bias;
-    NRF_TIMER0->CC[TIMER_INTERVAL_CC] = time;
+    NRF_TIMER0->TASKS_CAPTURE[TIMER_INTERVAL_CC] = 1;
+    NRF_TIMER0->CC[TIMER_INTERVAL_CC] += CC_SET_SAFETY_TIME;
     NRF_TIMER0->EVENTS_COMPARE[TIMER_INTERVAL_CC] = 0;
+    NRF_TIMER0->CC[TIMER_INTERVAL_CC] = time;
     Interrupt_enableAll();
 }
 
